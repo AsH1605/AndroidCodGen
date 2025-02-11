@@ -1,0 +1,2418 @@
+problem,solution
+"/**
+ * This utility class provides helper functions for formatting weather data.
+ *
+ * @package com.example.calender.data
+ * This package likely contains data-related classes and utility functions.
+ *
+ * @object WeatherUtils
+ * This object contains several static functions for formatting various aspects of weather data, such as temperature, time, wind speed, pressure, and humidity.
+ *
+ * @function getHourAndMinute(timestamp: Int): String
+ * Converts a Unix timestamp (in seconds) to a formatted time string representing hours and minutes.
+ *
+ * @param timestamp The Unix timestamp in seconds.
+ * @return A string in ""HH:mm"" format.
+ *
+ * @function getTemp(temp: Double): String
+ * Formats a temperature value in Kelvin to Celsius and returns it as a formatted string.
+ *
+ * @param temp The temperature in Kelvin.
+ * @return A string in ""XX.XX °C"" format.
+ *
+ * @function getMinTemp(temp: Double): String
+ * Formats a minimum temperature value in Kelvin to Celsius and returns it as a formatted string.
+ *
+ * @param temp The minimum temperature in Kelvin.
+ * @return A string in ""Min temp: XX.XX °C"" format.
+ *
+ * @function getMaxTemp(temp: Double): String
+ * Formats a maximum temperature value in Kelvin to Celsius and returns it as a formatted string.
+ *
+ * @param temp The maximum temperature in Kelvin.
+ * @return A string in ""Max temp: XX.XX °C"" format.
+ *
+ * @function getWindSpeed(speed: Double): String
+ * Formats the wind speed and returns it as a formatted string.
+ *
+ * @param speed The wind speed (units depend on the source data).
+ * @return A string in ""X.X m/s"" format.
+ *
+ * @function getPressure(pressure: Int): String
+ * Formats the atmospheric pressure and returns it as a formatted string.
+ *
+ * @param pressure The atmospheric pressure (likely in hPa).
+ * @return A string in ""X hPa"" format.
+ *
+ * @function getHumidity(pressure: Int): String
+ * Formats the humidity and returns it as a formatted string.
+ *
+ * @param pressure The humidity (likely in percentage).
+ * @return A string in ""X %"" format.
+ */
+
+
+","package com.example.calender.data
+
+import android.annotation.SuppressLint
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+object WeatherUtils {
+
+    fun getHourAndMinute(timestamp: Int): String {
+        val calendar = Calendar.getInstance(Locale.ENGLISH)
+        calendar.timeInMillis = timestamp * 1000L
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        return ""${hour}:${minute}""
+    }
+
+
+    fun getTemp(temp: Double): String {
+        val formattedTemp = String.format(""%.2f"", temp - 273)
+        return ""$formattedTemp °C""
+    }
+
+
+    fun getMinTemp(temp: Double): String {
+        return ""Min temp: $temp °C""
+    }
+
+
+    fun getMaxTemp(temp: Double): String {
+        return ""Max temp: $temp °C""
+    }
+
+    fun getWindSpeed(speed: Double): String {
+        return ""$speed m/s""
+    }
+
+    fun getPressure(pressure: Int): String {
+        return ""$pressure hPa""
+    }
+
+    fun getHumidity(pressure: Int): String {
+        return ""$pressure %""
+    }
+}"
+"/**
+ * This module provides dependencies related to Firebase for the application, specifically for managing notes.  It uses Dagger Hilt for dependency injection.
+ *
+ * @package com.example.calender.data.di
+ * This package contains modules for Dagger Hilt dependency injection.
+ *
+ * @Module
+ * This annotation marks this class as a Dagger Hilt module, providing dependencies.
+ *
+ * @InstallIn(SingletonComponent::class)
+ * This specifies that the module should be installed into the SingletonComponent, meaning its provided dependencies
+ * will have a singleton scope throughout the application's lifecycle.
+ *
+ * @object FirebaseModule
+ * This object contains methods annotated with @Provides, which Dagger Hilt uses to create and provide dependencies.
+ *
+ * @function provideNoteRef(): CollectionReference
+ * Provides a CollectionReference object pointing to the ""Notes"" collection in Firebase Firestore.
+ * This is the central point of interaction with the notes data in Firebase.
+ *
+ * @function provideBooksRepository(noteRef: CollectionReference): NotesFirebaseRepository
+ * Provides an implementation of the NotesFirebaseRepository interface, using the NoteFromFirebaseRepositoryImpl class.
+ * This class interacts with the Firebase Firestore database to manage notes.  It takes the provided CollectionReference
+ * as a dependency.
+ *
+ * @param noteRef The CollectionReference to the ""Notes"" collection in Firestore.
+ * @return An instance of NotesFirebaseRepository which handles data access for notes.
+ *
+ * @function provideUseCases(repo: NotesFirebaseRepository): UseCases
+ * Provides an instance of the UseCases class, which bundles together the GetNote, AddNote, and DeleteNote use cases.
+ * These use cases encapsulate the business logic for interacting with notes.  This function takes the NotesFirebaseRepository
+ * as a dependency, injecting the data access layer into the use case layer.
+ *
+ * @param repo An instance of NotesFirebaseRepository providing data access.
+ * @return An instance of UseCases containing the note-related use cases.
+ */
+","package com.example.calender.data.di
+
+import com.example.calender.data.RepositoryImpl.NoteFromFirebaseRepositoryImpl
+import com.example.calender.domain.NotesFirebase.NotesFirebaseRepository
+import com.example.calender.domain.UseCases.AddNote
+import com.example.calender.domain.UseCases.DeleteNote
+import com.example.calender.domain.UseCases.GetNote
+import com.example.calender.domain.UseCases.UseCases
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.firestore
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+object FirebaseModule {
+    @Provides
+    fun provideNoteRef() = Firebase.firestore.collection(""Notes"")
+
+    @Provides
+    fun provideBooksRepository(
+        noteRef: CollectionReference
+    ): NotesFirebaseRepository = NoteFromFirebaseRepositoryImpl(noteRef)
+
+    @Provides
+    fun provideUseCases(
+        repo: NotesFirebaseRepository
+    ) = UseCases(
+        getNotes = GetNote(repo),
+        addNote = AddNote(repo),
+        deleteNote = DeleteNote(repo)
+    )
+}"
+"```java
+/**
+ * This module provides dependencies related to location tracking for the application, using Dagger Hilt for dependency injection.
+ *
+ * @package com.example.calender.data.di
+ * This package contains modules for Dagger Hilt dependency injection.
+ *
+ * @Module
+ * This annotation marks this class as a Dagger Hilt module, providing dependencies.
+ *
+ * @InstallIn(SingletonComponent::class)
+ * This specifies that the module should be installed into the SingletonComponent, meaning its provided dependencies
+ * will have a singleton scope throughout the application's lifecycle.
+ *
+ * @object LocationModule
+ * This object contains methods annotated with @Provides, which Dagger Hilt uses to create and provide dependencies.
+ *
+ * @function provideFusedLocationProviderClient(application: Application): FusedLocationProviderClient
+ * Provides a FusedLocationProviderClient instance, obtained from LocationServices using the application context.
+ * This client is used for accessing location updates from the device's fused location provider, which provides high-accuracy
+ * location data.
+ *
+ * @param application The Android application context.
+ * @return A FusedLocationProviderClient instance.
+ *
+ * @function provideLocationManager(application: Application): LocationManager
+ * Provides a LocationManager instance, obtained from the application's system services.  The LocationManager is used for
+ * interacting with different location providers on the device.
+ *
+ * @param application The Android application context.
+ * @return A LocationManager instance.
+ *
+ * @function provideDefaultLocationTracker(fusedLocationProviderClient: FusedLocationProviderClient, application: Application): LocationTracker
+ * Provides an instance of the DefaultLocationTracker, implementing the LocationTracker interface.  This class likely handles
+ * the actual logic for tracking the device's location. It uses the FusedLocationProviderClient and the application context
+ * as dependencies.
+ *
+ * @param fusedLocationProviderClient The FusedLocationProviderClient instance.
+ * @param application The Android application context.
+ * @return An instance of LocationTracker, which provides location tracking functionality.
+ */
+```
+","package com.example.calender.data.di
+
+import android.app.Application
+import android.content.Context
+import android.location.LocationManager
+import com.example.calender.data.location.DefaultLocationTracker
+import com.example.calender.domain.Location.LocationTracker
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+
+@Module
+@InstallIn(SingletonComponent::class)
+object LocationModule {
+
+    @Provides
+    @Singleton
+    fun provideFusedLocationProviderClient(application: Application): FusedLocationProviderClient {
+        return LocationServices.getFusedLocationProviderClient(application)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationManager(application: Application): LocationManager {
+        return application.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    }
+
+    @Provides
+    @Singleton
+    fun provideDefaultLocationTracker(
+        fusedLocationProviderClient: FusedLocationProviderClient,
+        application: Application
+    ): LocationTracker {
+        return DefaultLocationTracker(fusedLocationProviderClient, application)
+    }
+}"
+"```java
+/**
+ * This module provides dependencies related to the local database for managing notes, using Dagger Hilt for dependency injection.
+ *
+ * @package com.example.calender.data.di
+ * This package contains modules for Dagger Hilt dependency injection.
+ *
+ * @Module
+ * This annotation marks this class as a Dagger Hilt module, providing dependencies.
+ *
+ * @InstallIn(SingletonComponent::class)
+ * This specifies that the module should be installed into the SingletonComponent, meaning its provided dependencies
+ * will have a singleton scope throughout the application's lifecycle.
+ *
+ * @object NoteModule
+ * This object contains methods annotated with @Provides, which Dagger Hilt uses to create and provide dependencies.
+ *
+ * @function provideNoteDatabase(app: Application): NoteDatabase
+ * Provides a NoteDatabase instance using Room's database builder.  This function creates and configures a Room database
+ * for storing notes locally on the device.
+ *
+ * @param app The Android application context.
+ * @return A NoteDatabase instance.
+ *
+ * @function provideNoteRepository(db: NoteDatabase): NotesRepository
+ * Provides an instance of NotesRepository, using NotesRepositoryImpl which interacts with the provided NoteDatabase.  This
+ * injects the database dependency into the repository layer, providing a concrete implementation for data access.
+ *
+ * @param db The NoteDatabase instance.
+ * @return A NotesRepository instance.
+ */
+```
+","package com.example.calender.data.di
+
+import android.app.Application
+import androidx.room.Room
+import com.example.calender.data.RepositoryImpl.NotesRepositoryImpl
+import com.example.calender.data.db.NoteDatabase
+import com.example.calender.domain.Notes.NotesRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+
+@Module
+@InstallIn(SingletonComponent::class)
+object NoteModule {
+
+    @Provides
+    @Singleton
+    fun provideNoteDatabase(app:Application): NoteDatabase {
+        return Room.databaseBuilder(
+            app,
+            NoteDatabase::class.java,
+            NoteDatabase.DATABASE_NAME
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteRepository(db: NoteDatabase):NotesRepository{
+        return NotesRepositoryImpl(db)
+    }
+}"
+"```java
+/**
+ * This module provides the WeatherRepositoryImpl dependency using Dagger Hilt.
+ *
+ * @package com.example.calender.data.di
+ * This package contains modules for Dagger Hilt dependency injection.
+ *
+ * @Module
+ * This annotation marks this class as a Dagger Hilt module, providing dependencies.
+ *
+ * @InstallIn(SingletonComponent::class)
+ * This specifies that the module should be installed into the SingletonComponent, meaning its provided dependencies
+ * will have a singleton scope throughout the application's lifecycle.
+ *
+ * @object RepositoryModule
+ * This object contains methods annotated with @Provides, which Dagger Hilt uses to create and provide dependencies.
+ *
+ * @function provideWeatherRepository(apiInterface: ApiInterface): WeatherRepositoryImpl
+ * Provides an instance of WeatherRepositoryImpl.  This implementation uses the provided ApiInterface to fetch weather data.
+ * The WeatherRepositoryImpl likely handles the logic for making network requests and parsing the responses.
+ *
+ * @param apiInterface The ApiInterface used to make network requests.
+ * @return An instance of WeatherRepositoryImpl.
+ */
+```
+","package com.example.calender.data.di
+
+import com.example.calender.data.RepositoryImpl.WeatherRepositoryImpl
+import com.example.calender.data.remote.ApiInterface
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+object RepositoryModule {
+    @Provides
+    fun provideWeatherRepository(apiInterface: ApiInterface): WeatherRepositoryImpl
+    = WeatherRepositoryImpl(apiInterface)
+}"
+"```java
+/**
+ * This module provides dependencies related to network requests, using Retrofit, OkHttp, and Gson, and Dagger Hilt for dependency injection.
+ *
+ * @package com.example.calender.data.di
+ * This package contains modules for Dagger Hilt dependency injection.
+ *
+ * @Module
+ * This annotation marks this class as a Dagger Hilt module, providing dependencies.
+ *
+ * @InstallIn(SingletonComponent::class)
+ * This specifies that the module should be installed into the SingletonComponent, meaning its provided dependencies
+ * will have a singleton scope throughout the application's lifecycle.
+ *
+ * @object NetworkModule
+ * This object contains methods annotated with @Provides, which Dagger Hilt uses to create and provide dependencies.
+ *
+ * @function provideApiInterface(retrofit: Retrofit): ApiInterface
+ * Provides an instance of ApiInterface, created using the provided Retrofit instance.  This interface likely defines the
+ * endpoints for making network requests to a weather API.
+ *
+ * @param retrofit The Retrofit instance.
+ * @return An ApiInterface instance.
+ *
+ * @function provideLoggingInterceptor(): HttpLoggingInterceptor
+ * Provides an HttpLoggingInterceptor configured to log request and response bodies.  This is useful for debugging network
+ * requests.
+ *
+ * @return An HttpLoggingInterceptor instance.
+ *
+ * @function provideOkHttpClient(logger: HttpLoggingInterceptor): OkHttpClient
+ * Provides an OkHttpClient instance, adding the provided HttpLoggingInterceptor to its interceptors.  This allows for
+ * network request logging.
+ *
+ * @param logger The HttpLoggingInterceptor instance.
+ * @return An OkHttpClient instance.
+ *
+ * @function provideRetrofit(okHttpClient: OkHttpClient): Retrofit
+ * Provides a Retrofit instance configured with the base URL from ApiInterface.BASE_URL, GsonConverterFactory for JSON parsing,
+ * and the provided OkHttpClient.
+ *
+ * @param okHttpClient The OkHttpClient instance.
+ * @return A Retrofit instance.
+ */
+```
+
+
+","package com.example.calender.data.di
+
+import android.app.Application
+import androidx.room.Room
+import com.example.calender.data.remote.ApiInterface
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Singleton
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+
+
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule{
+
+    @Provides
+    @Singleton
+    fun provideApiInterface(retrofit: Retrofit): ApiInterface {
+        return retrofit.create(ApiInterface::class.java)
+    }
+
+    @Provides
+    fun provideLoggingInterceptor() =
+        HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
+
+    @Provides
+    fun provideOkHttpClient(logger:HttpLoggingInterceptor): OkHttpClient{
+        val okHttpClient = OkHttpClient.Builder()
+        okHttpClient.addInterceptor(logger)
+        val okHttp = okHttpClient.build()
+        return okHttp
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient):Retrofit{
+        return Retrofit.Builder()
+            .baseUrl(ApiInterface.BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient)
+            .build()
+    }
+}"
+"```java
+/**
+ * This class implements the NotesFirebaseRepository interface, providing data access to Firebase Firestore for managing notes.
+ *  It uses Kotlin coroutines and flows for asynchronous operations.
+ *
+ * @package com.example.calender.data.RepositoryImpl
+ * This package contains repository implementations for data access.
+ *
+ * @class NoteFromFirebaseRepositoryImpl
+ * This class implements the NotesFirebaseRepository interface, handling interactions with Firebase Firestore for notes.
+ *
+ * @constructor
+ * Injects a CollectionReference to the ""Notes"" collection in Firestore.
+ *
+ * @property noteRef: CollectionReference
+ * A reference to the ""Notes"" collection in Firebase Firestore.  This is used for all interactions with the database.
+ *
+ * @function getNotesFromFirestore(): Flow<ResponseFromFirestore<List<NoteFirebase>>>
+ * Retrieves a flow of notes from Firestore.  It uses a snapshot listener to observe changes in the database in real time.
+ * The flow emits either a Success result containing a list of NoteFirebase objects or a Failure result with an exception.
+ *
+ * @return A flow emitting ResponseFromFirestore<List<NoteFirebase>> objects, representing either success or failure.
+ *
+ * @function addNoteToFirestore(note: String): addNoteResponse
+ * Adds a new note to Firestore. It generates a new document ID, creates a NoteFirebase object, and sets the document in Firestore.
+ * The function returns either a Success or Failure ResponseFromFirestore indicating the outcome.
+ *
+ * @param note The string content of the note to add.
+ * @return An addNoteResponse, which is either a Success (true) or Failure (Exception).
+ *
+ * @function deleteNoteFromFirebase(id: String): DeleteNoteResponse
+ * Deletes a note from Firestore based on its ID. It attempts to delete the document corresponding to the provided ID and
+ * returns a ResponseFromFirestore indicating success or failure.
+ *
+ * @param id The ID of the note to delete.
+ * @return A DeleteNoteResponse, either Success (true) or Failure (Exception).
+ */
+```
+
+
+","package com.example.calender.data.RepositoryImpl
+
+import com.example.calender.data.model.NoteFirebase
+import com.example.calender.data.model.response.ResponseFromFirestore
+import com.example.calender.domain.NotesFirebase.DeleteNoteResponse
+import com.example.calender.domain.NotesFirebase.NotesFirebaseRepository
+import com.example.calender.domain.NotesFirebase.addNoteResponse
+import com.google.firebase.firestore.CollectionReference
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class NoteFromFirebaseRepositoryImpl @Inject constructor(
+    private val noteRef: CollectionReference
+): NotesFirebaseRepository{
+
+    override fun getNotesFromFirestore() = callbackFlow {
+        val snapshotListener = noteRef.orderBy(""id"").addSnapshotListener { snapshot, e ->
+            val notesResponse = if (snapshot!=null){
+                val note = snapshot.toObjects(NoteFirebase::class.java)
+                ResponseFromFirestore.Success(note)
+            } else{
+                ResponseFromFirestore.Failure(e)
+            }
+            trySend(notesResponse)
+        }
+        awaitClose{
+            snapshotListener.remove()
+        }
+    }
+
+    override suspend fun addNoteToFirestore(note: String): addNoteResponse = try {
+        val id = noteRef.document().id
+        val notes = NoteFirebase(
+            id = id,
+            note = note
+        )
+        noteRef.document(id).set(notes).await()
+        ResponseFromFirestore.Success(true)
+    } catch (e:Exception){
+        ResponseFromFirestore.Failure(e)
+    }
+
+    override suspend fun deleteNoteFromFirebase(id: String): DeleteNoteResponse= try {
+        noteRef.document(id).delete().await()
+        ResponseFromFirestore.Success(true)
+    } catch (e:Exception){
+        ResponseFromFirestore.Failure(e)
+    }
+}"
+"```java
+/**
+ * This class implements the WeatherRepository interface (implicitly, as no interface is explicitly shown), providing data access for weather information using a remote API.
+ *
+ * @package com.example.calender.data.RepositoryImpl
+ * This package contains repository implementations for data access.
+ *
+ * @class WeatherRepositoryImpl
+ * This class is responsible for fetching weather data from a remote API.
+ *
+ * @constructor
+ * Injects an instance of ApiInterface, which is used to make network requests to the weather API.
+ *
+ * @property apiInterface: ApiInterface
+ * An instance of ApiInterface, used to communicate with the external weather API.
+ *
+ * @function getWeather(lat: Double, lon: Double): CurrentWeather
+ * This function fetches weather data from the API using the provided latitude and longitude coordinates.  It uses the
+ * injected ApiInterface to make the network request and returns a CurrentWeather object representing the retrieved data.
+ *
+ * @param lat The latitude coordinate.
+ * @param lon The longitude coordinate.
+ * @return A CurrentWeather object containing the weather data.  Note: Error handling (e.g., for network issues or API errors) is not explicitly shown in this code snippet.  A production-ready implementation would need to include such handling.
+ */
+```
+
+
+","package com.example.calender.data.RepositoryImpl
+
+import com.example.calender.data.model.response.CurrentWeather
+import com.example.calender.data.remote.ApiInterface
+import javax.inject.Inject
+
+class WeatherRepositoryImpl @Inject constructor(
+    private val apiInterface: ApiInterface
+) {
+    suspend fun getWeather(lat: Double, lon: Double): CurrentWeather {
+        return apiInterface.getWeather(lat, lon)
+    }
+}"
+"```java
+/**
+ * This class implements the NotesRepository interface, providing data access to a local database (Room) for managing notes.
+ *
+ * @package com.example.calender.data.RepositoryImpl
+ * This package contains repository implementations for data access.
+ *
+ * @class NotesRepositoryImpl
+ * This class implements the NotesRepository interface, handling interactions with a local Room database for notes.
+ *
+ * @constructor
+ * Takes a NoteDatabase instance as a dependency, providing access to the database's data access objects (DAOs).
+ *
+ * @property database: NoteDatabase
+ * An instance of NoteDatabase, providing access to the underlying database.
+ * @property dao: NoteDao
+ * A reference to the NoteDao, providing methods for interacting with the notes table in the database. This is obtained from the database instance.
+ *
+ * @function addNote(note: NoteEntity)
+ * Adds a new note to the database.  This uses the NoteDao to perform the database insert operation.
+ *
+ * @param note The NoteEntity to be added.
+ *
+ * @function getNote(): Flow<List<NoteEntity>>
+ * Retrieves all notes from the database as a Flow. This allows for observing changes to the database in real-time.
+ *
+ * @return A Flow that emits a List of NoteEntity objects.
+ *
+ * @function updateNote(note: NoteEntity)
+ * Updates an existing note in the database.  The NoteDao's update method is used to perform this operation.
+ *
+ * @param note The updated NoteEntity.
+ *
+ * @function deleteNote(note: NoteEntity)
+ * Deletes a note from the database. The NoteDao's delete method is used for this purpose.
+ *
+ * @param note The NoteEntity to be deleted.
+ */
+```
+
+
+
+","package com.example.calender.data.RepositoryImpl
+
+import com.example.calender.data.db.NoteDatabase
+import com.example.calender.data.db.NoteEntity
+import com.example.calender.domain.Notes.NotesRepository
+import kotlinx.coroutines.flow.Flow
+
+class NotesRepositoryImpl(private val database: NoteDatabase):NotesRepository {
+    private val dao = database.noteDao()
+    override suspend fun addNote(note: NoteEntity) {
+        dao.addNote(note)
+    }
+
+    override suspend fun getNote(): Flow<List<NoteEntity>> =
+        dao.getNote()
+
+    override suspend fun updateNote(note: NoteEntity) {
+        dao.updateNote(note)
+    }
+
+    override suspend fun deleteNote(note: NoteEntity) {
+        dao.deleteNote(note)
+    }
+}"
+"```java
+/**
+ * This data class represents a note entity for storage in a Room database.
+ *
+ * @package com.example.calender.data.db
+ * This package contains database-related classes.
+ *
+ * @Entity(""notes"")
+ * This annotation marks the class as a Room database entity, specifying the table name as ""notes"".
+ *
+ * @class NoteEntity
+ * This data class represents a single note within the database.  It includes fields for the note's ID, text content, completion status, and creation timestamp.
+ *
+ * @property id: Int
+ * The unique ID of the note, auto-generated by Room.
+ *
+ * @property note: String
+ * The text content of the note.
+ *
+ * @property done: Boolean
+ * A flag indicating whether the note is marked as complete (true) or not (false).
+ *
+ * @property added: Long
+ * The timestamp (in milliseconds) representing when the note was added.  This is a Unix timestamp.
+ *
+ * @property addDate: String
+ * A read-only computed property that formats the added timestamp into a human-readable date and time string using the format ""yyyy/MM/dd hh:mm"". This uses a SimpleDateFormat for formatting.
+ */
+```
+
+
+","package com.example.calender.data.db
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import java.text.SimpleDateFormat
+import java.util.Date
+
+@Entity(""notes"")
+data class NoteEntity(
+
+    @PrimaryKey(autoGenerate = true)
+    val id:Int = 0,
+
+    @ColumnInfo(""note"")
+    val note:String,
+
+    @ColumnInfo(""done"")
+    val done: Boolean = false,
+
+    @ColumnInfo(""added"")
+    val added: Long = System.currentTimeMillis()
+)
+
+val NoteEntity.addDate: String get() = SimpleDateFormat(""yyyy/MM/dd hh:mm"").format(Date(added))"
+"```java
+/**
+ * This interface defines Data Access Objects (DAOs) for interacting with the `notes` table in a Room database.
+ *
+ * @package com.example.calender.data.db
+ * This package contains database-related classes.
+ *
+ * @Dao
+ * This annotation marks the interface as a Room DAO, defining methods for accessing database data.
+ *
+ * @interface NotesDao
+ * This interface defines methods for adding, retrieving, updating, and deleting note entities from the database.  These methods are implemented by Room at runtime.
+ *
+ * @function addNote(note: NoteEntity)
+ * Inserts a new note into the database.
+ *
+ * @param note The NoteEntity to be inserted.
+ *
+ * @function getNote(): Flow<List<NoteEntity>>
+ * Retrieves all notes from the database as a Flow. This allows for observing changes to the database in real-time.
+ *
+ * @return A Flow that emits a List of NoteEntity objects.
+ *
+ * @function updateNote(note: NoteEntity)
+ * Updates an existing note in the database.
+ *
+ * @param note The NoteEntity to be updated.
+ *
+ * @function deleteNote(note: NoteEntity)
+ * Deletes a note from the database.
+ *
+ * @param note The NoteEntity to be deleted.
+ */
+```
+
+
+
+
+","package com.example.calender.data.db
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface NotesDao {
+
+    @Insert
+    fun addNote(note: NoteEntity)
+
+    @Query(""SELECT * FROM notes"")
+    fun getNote() : Flow<List<NoteEntity>>
+
+    @Update
+    fun updateNote(note: NoteEntity)
+
+    @Delete
+    fun deleteNote(note: NoteEntity)
+}"
+"```java
+/**
+ * This class defines the Room database for managing notes.
+ *
+ * @package com.example.calender.data.db
+ * This package contains database-related classes.
+ *
+ * @Database(entities = [NoteEntity::class], version = 1)
+ * This annotation marks the class as a Room database, specifying that it manages the NoteEntity entity and is at version 1.
+ *
+ * @class NoteDatabase
+ * This abstract class represents the Room database.  It declares the DAO (`noteDao`) that provides access to the database.
+ *
+ * @function noteDao(): NotesDao
+ * This abstract function declares the DAO for interacting with the notes table.  Room will automatically implement this function at runtime.
+ *
+ * @companion object
+ * This companion object contains a constant defining the database name.
+ *
+ * @property DATABASE_NAME: String
+ * The name of the database file (""notes_db"").
+ */
+```
+
+
+
+","package com.example.calender.data.db
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+
+@Database(entities = [NoteEntity::class], version = 1)
+abstract class NoteDatabase: RoomDatabase() {
+    abstract fun noteDao(): NotesDao
+
+    companion object{
+        const val DATABASE_NAME=""notes_db""
+    }
+}"
+"```java
+/**
+ * This class implements the LocationTracker interface, providing functionality to retrieve the device's current location using the FusedLocationProviderClient.
+ *
+ * @package com.example.calender.data.location
+ * This package contains location-related classes.
+ *
+ * @class DefaultLocationTracker
+ * This class implements the LocationTracker interface, providing a default implementation for retrieving the device's current location.
+ *
+ * @constructor
+ * Injects a FusedLocationProviderClient and the Application context.
+ *
+ * @property locationClient: FusedLocationProviderClient
+ * The FusedLocationProviderClient used to obtain location updates.
+ *
+ * @property application: Application
+ * The Android application context, used for checking permissions and accessing system services.
+ *
+ * @function getCurrentLocation(): Location?
+ * This suspend function retrieves the device's last known location. Before attempting to get the location, it checks for necessary permissions (ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION) and ensures that location services (GPS or network) are enabled. If any of these conditions are not met, it returns null.  Otherwise, it uses the FusedLocationProviderClient's lastLocation to obtain the location asynchronously. The result is wrapped in a suspendCancellableCoroutine to handle the asynchronous nature of the location retrieval.  Success and failure callbacks are set using addOnSuccessListener and addOnFailureListener, and an onCanceledListener is added for cancellation handling.
+ *
+ * @return A Location object representing the device's current location, or null if permissions are lacking, location services are disabled, or an error occurs during location retrieval.
+ */
+```
+
+
+
+
+","package com.example.calender.data.location
+
+import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import androidx.core.content.ContextCompat
+import com.example.calender.domain.Location.LocationTracker
+import com.google.android.gms.location.FusedLocationProviderClient
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.suspendCancellableCoroutine
+import javax.inject.Inject
+import kotlin.coroutines.resume
+
+class DefaultLocationTracker @Inject constructor(
+    private val locationClient: FusedLocationProviderClient,
+    private val application: Application
+): LocationTracker {
+
+    override suspend fun getCurrentLocation(): Location? {
+        val hasAccessFineLocationPermission = ContextCompat.checkSelfPermission(
+            application,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        )==PackageManager.PERMISSION_GRANTED
+
+        val hasAccessCoarseLocationPermission = ContextCompat.checkSelfPermission(
+            application,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )==PackageManager.PERMISSION_GRANTED
+
+        val locationManager = application.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+        if (!hasAccessCoarseLocationPermission || !hasAccessFineLocationPermission || !isGpsEnabled)
+            return null
+
+        return suspendCancellableCoroutine { cont->
+            locationClient.lastLocation.apply {
+                if (isComplete){
+                    if (isSuccessful){
+                        cont.resume(result)
+                    } else{
+                        cont.resume(null)
+                    }
+                    return@suspendCancellableCoroutine
+                }
+                addOnSuccessListener {
+                    cont.resume(it)
+                }
+                addOnFailureListener {
+                    cont.resume(null)
+                }
+                addOnCanceledListener {
+                    cont.cancel()
+                }
+            }
+        }
+    }
+}"
+"```java
+/**
+ * This data class represents a note stored in Firebase Firestore.
+ *
+ * @package com.example.calender.data.model
+ * This package contains data models for the application.
+ *
+ * @class NoteFirebase
+ * This data class represents a single note stored in Firebase. It contains fields for the note's ID, text content, and a timestamp.
+ *
+ * @property id: String?
+ * The unique ID of the note in Firebase.  Can be null if a new note is being created.
+ *
+ * @property note: String?
+ * The text content of the note. Can be null.
+ *
+ * @property time: String?
+ * A string representation of the timestamp when the note was created.  Formatted as ""yyyy/MM/dd hh:mm"" using the device's default locale.  If not provided during object creation, it's automatically set to the current time.
+ *
+ * @constructor
+ * The constructor initializes the `time` property if it's not provided. It uses `SimpleDateFormat` to format the current time.
+ */
+```
+
+
+
+
+","package com.example.calender.data.model
+
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+data class NoteFirebase(
+    var id: String? = null,
+    var note:String? = null,
+    var time: String? = null
+){
+    init {
+        // Set the current time if not provided
+        if (time.isNullOrEmpty()) {
+            val currentTime = Calendar.getInstance().time
+            val dateFormat = SimpleDateFormat(""yyyy/MM/dd hh:mm"", Locale.getDefault())
+            time = dateFormat.format(currentTime)
+        }
+    }
+}
+"
+"```java
+/**
+ * This sealed class represents the possible responses from a Firestore operation, providing a structured way to handle loading states, successful results, and errors.
+ *
+ * @package com.example.calender.data.model.response
+ * This package contains response data models.
+ *
+ * @sealed class ResponseFromFirestore
+ * This sealed class defines three possible states for a response from a Firestore operation: Loading, Success, and Failure.  Using a sealed class ensures type safety and exhaustiveness when handling responses.
+ *
+ * @object Loading: ResponseFromFirestore<Nothing>
+ * Represents the loading state of a Firestore operation.
+ *
+ * @class Success<out T>: ResponseFromFirestore<T>
+ * Represents a successful Firestore operation, containing the resulting data.
+ *
+ * @property data: T
+ * The data returned from the successful Firestore operation.
+ *
+ * @class Failure: ResponseFromFirestore<Nothing>
+ * Represents a failed Firestore operation, containing an optional Exception object.
+ *
+ * @property e: Exception?
+ * The exception that occurred during the Firestore operation, if any.  Can be null if the failure reason is unknown.
+ */
+```
+
+
+
+
+","package com.example.calender.data.model.response
+
+
+sealed class ResponseFromFirestore<out T> {
+    object Loading: ResponseFromFirestore<Nothing>()
+
+    data class Success<out T>(
+        val data: T
+    ): ResponseFromFirestore<T>()
+
+    data class Failure(
+        val e: Exception?
+    ): ResponseFromFirestore<Nothing>()
+}"
+"```java
+/**
+ * This data class represents the current weather information received from a weather API.  The structure mirrors a typical JSON response from such an API.
+ *
+ * @package com.example.calender.data.model.response
+ * This package contains response data models.
+ *
+ * @class CurrentWeather
+ * This data class encapsulates the current weather data, including location, temperature, wind, clouds, and other weather-related details.  The fields directly map to the structure of a typical JSON response from a weather API.
+ *
+ * @property base: String
+ *  The base station of the weather data.
+ *
+ * @property clouds: Clouds
+ * An object containing cloud information (e.g., cloudiness percentage).
+ *
+ * @property cod: Int
+ *  The weather API's response code.
+ *
+ * @property coord: Coord
+ * An object containing the geographical coordinates (latitude and longitude).
+ *
+ * @property dt: Int
+ * The time of data calculation, represented as Unix timestamp.
+ *
+ * @property id: Int
+ * The ID of the weather station or location.
+ *
+ * @property main: Main
+ * An object containing main weather parameters (e.g., temperature, pressure, humidity).
+ *
+ * @property name: String
+ * The name of the location.
+ *
+ * @property sys: Sys
+ * An object containing system information (e.g., sunrise, sunset times).
+ *
+ * @property timezone: Int
+ * The timezone offset in seconds relative to UTC.
+ *
+ * @property visibility: Int
+ * The visibility in meters.
+ *
+ * @property weather: List<Weather>
+ * A list of weather condition objects, each describing a specific weather condition.
+ *
+ * @property wind: Wind
+ * An object containing wind information (e.g., speed, direction).
+ */
+```
+
+
+
+
+","package com.example.calender.data.model.response
+
+import com.example.calender.data.model.ApiResponse.Clouds
+import com.example.calender.data.model.ApiResponse.Coord
+import com.example.calender.data.model.ApiResponse.Main
+import com.example.calender.data.model.ApiResponse.Sys
+import com.example.calender.data.model.ApiResponse.Weather
+import com.example.calender.data.model.ApiResponse.Wind
+import com.google.gson.annotations.SerializedName
+
+
+data class CurrentWeather(
+    @SerializedName(""base"") val base: String,
+    @SerializedName(""clouds"") val clouds: Clouds,
+    @SerializedName(""cod"") val cod: Int,
+    @SerializedName(""coord"") val coord: Coord,
+    @SerializedName(""dt"") val dt: Int,
+    @SerializedName(""id"") val id: Int,
+    @SerializedName(""main"") val main: Main,
+    @SerializedName(""name"") val name: String,
+    @SerializedName(""sys"") val sys: Sys,
+    @SerializedName(""timezone"") val timezone: Int,
+    @SerializedName(""visibility"") val visibility: Int,
+    @SerializedName(""weather"") val weather: List<Weather>,
+    @SerializedName(""wind"") val wind: Wind
+){
+}"
+"```java
+/**
+ * This data class represents a single weather condition from a weather API response.
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Weather
+ * This data class represents a single weather condition, such as ""clear sky,"" ""rain,"" or ""snow.""  It includes details about the condition's description, icon ID, ID code, and main weather category.
+ *
+ * @property description: String
+ * A human-readable description of the weather condition (e.g., ""clear sky"").
+ *
+ * @property icon: String
+ * An identifier for the weather icon associated with this condition.  This is typically used to display an appropriate icon in a weather application.
+ *
+ * @property id: Int
+ * A numerical ID representing the weather condition.
+ *
+ * @property main: String
+ * The main weather category (e.g., ""Clear,"" ""Rain,"" ""Clouds"").
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Weather(
+    val description: String = """",
+    val icon: String = """",
+    val id: Int = 0,
+    val main: String = """"
+): Parcelable"
+"```java
+/**
+ * This data class represents the main weather parameters from a weather API response.
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Main
+ * This data class encapsulates the core weather parameters, including temperature, feels-like temperature, humidity, and pressure.
+ *
+ * @property feels_like: Double
+ * The temperature that it feels like, accounting for wind chill, humidity, etc.
+ *
+ * @property humidity: Int
+ * The relative humidity in percentage.
+ *
+ * @property pressure: Int
+ * Atmospheric pressure in hPa.
+ *
+ * @property temp: Double
+ * The temperature in Kelvin.
+ *
+ * @property temp_max: Double
+ * The maximum temperature in Kelvin.
+ *
+ * @property temp_min: Double
+ * The minimum temperature in Kelvin.
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Main(
+    val feels_like: Double ,
+    val humidity: Int ,
+    val pressure: Int ,
+    val temp: Double ,
+    val temp_max: Double,
+    val temp_min: Double
+): Parcelable"
+"```java
+/**
+ * This data class represents geographical coordinates (latitude and longitude).
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Coord
+ * This simple data class holds the latitude and longitude coordinates of a location.
+ *
+ * @property lat: Double
+ * The latitude of the location.
+ *
+ * @property lon: Double
+ * The longitude of the location.
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Coord(
+    val lat: Double,
+    val lon: Double
+):Parcelable"
+"```java
+/**
+ * This data class represents system-level information from a weather API response, typically related to the location and sun times.
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Sys
+ * This data class holds system-level information, often related to the location's country and sun times.
+ *
+ * @property country: String
+ * The two-letter country code of the location.
+ *
+ * @property id: Int
+ * An internal ID used by the weather API.
+ *
+ * @property sunrise: Int
+ * The sunrise time, represented as a Unix timestamp.
+ *
+ * @property sunset: Int
+ * The sunset time, represented as a Unix timestamp.
+ *
+ * @property type: Int
+ * An internal type code used by the weather API (likely related to the location's type).
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Sys(
+    val country: String,
+    val id: Int,
+    val sunrise: Int,
+    val sunset: Int,
+    val type: Int
+) : Parcelable"
+"```java
+/**
+ * This data class represents cloud coverage information from a weather API response.
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Clouds
+ * This simple data class holds the overall cloud coverage percentage.
+ *
+ * @property all: Int
+ * The total cloud coverage percentage (0-100).
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Clouds(
+    val all: Int
+):Parcelable"
+"```java
+/**
+ * This data class represents wind information from a weather API response.
+ *
+ * @package com.example.calender.data.model.ApiResponse
+ * This package contains data models representing API responses.
+ *
+ * @class Wind
+ * This data class holds the wind speed and direction.
+ *
+ * @property deg: Int
+ * The wind direction in degrees (meteorological convention: 0° is North, 90° is East, etc.).
+ *
+ * @property speed: Double
+ * The wind speed.  Units depend on the API used (often meters per second).
+ *
+ * @Parcelize
+ * This annotation marks the class as Parcelable, allowing it to be passed between Android components.
+ */
+```
+
+
+
+
+
+","package com.example.calender.data.model.ApiResponse
+
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
+@Parcelize
+data class Wind(
+    val deg: Int = 0,
+    val speed: Double = 0.0
+) : Parcelable"
+"```java
+/**
+ * This interface defines the endpoints for interacting with a weather API using Retrofit.
+ *
+ * @package com.example.calender.data.remote
+ * This package contains classes for interacting with remote data sources.
+ *
+ * @interface ApiInterface
+ * This interface defines a single endpoint (`getWeather`) for retrieving current weather data.  Retrofit uses this interface to generate the necessary network requests.
+ *
+ * @function getWeather(lat: Double, lon: Double, appid: String = ""0e52bb63e84036aa2e3be5c9858c1d15""): CurrentWeather
+ * This suspend function retrieves current weather data for a given latitude and longitude.  It uses the `@GET` annotation to specify the API endpoint and `@Query` annotations to pass latitude, longitude, and API key as query parameters.  The response is expected to be of type `CurrentWeather`.
+ *
+ * @param lat The latitude of the location.
+ * @param lon The longitude of the location.
+ * @param appid The API key for authentication (hardcoded in this example—consider using a more secure approach in production).
+ * @return A CurrentWeather object containing the weather data.
+ *
+ * @companion object
+ * A companion object containing the base URL for the weather API.
+ *
+ * @property BASE_URL: String
+ * The base URL of the OpenWeatherMap API.
+ */
+```
+
+
+
+
+
+
+
+
+
+","package com.example.calender.data.remote
+
+import com.example.calender.data.model.response.CurrentWeather
+import retrofit2.http.GET
+import retrofit2.http.Query
+
+interface ApiInterface {
+    @GET(""data/2.5/weather"")
+    suspend fun getWeather(
+        @Query(""lat"") lat: Double,
+        @Query(""lon"") lon: Double,
+        @Query(""appid"") appid:String = ""0e52bb63e84036aa2e3be5c9858c1d15"",
+//        @Query(""units"") units:String = ""metric""
+    ): CurrentWeather
+
+    companion object {
+        const val BASE_URL = ""https://api.openweathermap.org/""
+    }
+}"
+"```java
+/**
+ * This class serves as the base application class for the Android application.  It's annotated with `@HiltAndroidApp` to enable Hilt dependency injection.
+ *
+ * @package com.example.calender.domain
+ * This package likely contains domain-level classes and interfaces.
+ *
+ * @class BaseApp
+ * This class extends `Application` and is annotated with `@HiltAndroidApp`. This annotation initiates Hilt's code generation and sets up Hilt's dependency injection container for the entire application.
+ *
+ * @constructor
+ * The constructor is empty as there is no specific initialization logic needed here.
+ */
+```
+
+
+
+
+","package com.example.calender.domain
+
+import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class BaseApp:Application() {
+}"
+"```java
+/**
+ * This class provides a mapping function to convert a CurrentWeather object (likely from a network response) into a CurrentWeatherForm object (likely used in the presentation layer).  It also maps weather icons from strings to drawable resources.
+ *
+ * @package com.example.calender.domain.mapper
+ * This package contains mappers for transforming data between different layers.
+ *
+ * @class WeatherMapper
+ * This class contains a single function to map from a CurrentWeather object to a CurrentWeatherForm object.  It also includes a helper function to map weather icons.
+ *
+ * @constructor
+ * The constructor is empty, indicating that no dependencies are directly injected. However, the use of `@Inject` suggests that dependencies might be provided by a dependency injection framework like Hilt.
+ *
+ * @function currentWeatherResponseToCurrentWeather(currentWeather: CurrentWeather): CurrentWeatherForm
+ * This function converts a CurrentWeather object to a CurrentWeatherForm object.  It extracts relevant information from the CurrentWeather object and performs some transformations (e.g., converting temperature units, formatting time).  It also calls `mapIcon` to get the appropriate drawable resource for the weather icon.
+ *
+ * @param currentWeather The CurrentWeather object to be mapped.
+ * @return A CurrentWeatherForm object representing the transformed data.
+ *
+ * @function mapIcon(icon: String): Int
+ * This private helper function maps a weather icon string (obtained from the API response) to an integer representing a drawable resource ID.  This is a switch statement that maps various icon codes to the corresponding drawable resources in the `R.drawable` folder.  A default icon is returned if the provided icon string doesn't match any known case.
+ *
+ * @param icon The weather icon string from the API response.
+ * @return An integer representing the drawable resource ID.
+ */
+```
+
+
+
+
+","package com.example.calender.domain.mapper
+
+import com.example.calender.R
+import com.example.calender.data.WeatherUtils
+import com.example.calender.data.model.response.CurrentWeather
+import com.example.calender.domain.weather.CurrentWeatherForm
+import javax.inject.Inject
+
+
+class WeatherMapper @Inject constructor() {
+    fun currentWeatherResponseToCurrentWeather(
+        currentWeather: CurrentWeather
+    ): CurrentWeatherForm {
+        val icon=currentWeather.weather[0].icon
+        val weatherIcon = mapIcon(icon)
+        return CurrentWeatherForm(
+            name = currentWeather.name,
+            updatedDate = currentWeather.timezone,
+            description = currentWeather.weather[0].description.uppercase(),
+            temperature = WeatherUtils.getTemp(
+                currentWeather.main.temp
+            ),
+            dt = WeatherUtils.getHourAndMinute(
+                currentWeather.dt
+            ),
+            maxTemperature = WeatherUtils.getMaxTemp(
+                currentWeather.main.temp_max
+            ),
+            minTemperature = WeatherUtils.getMinTemp(
+                currentWeather.main.temp_min
+            ),
+            sunrise = WeatherUtils.getHourAndMinute(
+                currentWeather.sys.sunrise
+            ),
+            sunset = WeatherUtils.getHourAndMinute(
+                currentWeather.sys.sunset
+            ),
+            windSpeed = WeatherUtils.getWindSpeed(
+                currentWeather.wind.speed
+            ),
+            pressure = WeatherUtils.getPressure(
+                currentWeather.main.pressure
+            ),
+            feelsLike = currentWeather.main.feels_like.toString(),
+            humidity = WeatherUtils.getHumidity(
+                currentWeather.main.humidity
+            ),
+            icon = weatherIcon
+        )
+    }
+
+    private fun mapIcon(icon: String): Int {
+        return when(icon){
+            ""01d""->R.drawable.d01
+            ""01n""->R.drawable.n01
+            ""02d""->R.drawable.d02
+            ""02n""->R.drawable.n02
+            ""03d""->R.drawable.n03
+            ""03n""->R.drawable.n03
+            ""04d""->R.drawable.d04
+            ""04n""->R.drawable.n04
+            ""09d""->R.drawable.d09
+            ""09n""->R.drawable.n09
+            ""10d""->R.drawable.d10
+            ""10n""->R.drawable.n10
+            ""11d""->R.drawable.d11
+            ""11n""->R.drawable.n11
+            ""13d""->R.drawable.d13
+            ""13n""->R.drawable.n13
+            ""50d""->R.drawable.d50
+            ""50n""->R.drawable.n50
+            else->R.drawable.d01
+        }
+    }
+}"
+"```java
+/**
+ * This interface defines the contract for a repository that interacts with a Firebase Firestore database to manage notes.
+ *
+ * @package com.example.calender.domain.NotesFirebase
+ * This package likely contains domain-level interfaces and classes related to Firebase note management.
+ *
+ * @interface NotesFirebaseRepository
+ * This interface defines methods for retrieving, adding, and deleting notes from a Firebase Firestore database.  It's a key component in separating data access logic from the rest of the application.
+ *
+ * @typealias Notes
+ * An alias for `List<NoteFirebase>`, representing a list of notes.
+ *
+ * @typealias NotesResponse
+ * An alias for `ResponseFromFirestore<Notes>`, representing a response from a Firestore operation that retrieves notes.  This uses a sealed class (`ResponseFromFirestore`) to handle loading states, success, and failure.
+ *
+ * @typealias addNoteResponse
+ * An alias for `ResponseFromFirestore<Boolean>`, representing a response from a Firestore operation that adds a note.
+ *
+ * @typealias DeleteNoteResponse
+ * An alias for `ResponseFromFirestore<Boolean>`, representing a response from a Firestore operation that deletes a note.
+ *
+ * @function getNotesFromFirestore(): Flow<NotesResponse>
+ * This function retrieves a flow of notes from Firestore.  The flow emits a `NotesResponse` object, which indicates whether the operation was successful and contains the list of notes if successful.  Using a flow allows for real-time updates from Firestore.
+ *
+ * @return A Flow that emits NotesResponse objects.
+ *
+ * @function addNoteToFirestore(note: String): addNoteResponse
+ * This suspend function adds a new note to Firestore.  It returns an `addNoteResponse` indicating success or failure.
+ *
+ * @param note The text content of the note to be added.
+ * @return An addNoteResponse object.
+ *
+ * @function deleteNoteFromFirebase(id: String): DeleteNoteResponse
+ * This suspend function deletes a note from Firestore based on its ID.  It returns a `DeleteNoteResponse` indicating success or failure.
+ *
+ * @param id The ID of the note to be deleted.
+ * @return A DeleteNoteResponse object.
+ */
+```
+
+
+
+
+
+
+","package com.example.calender.domain.NotesFirebase
+
+import com.example.calender.data.model.NoteFirebase
+import com.example.calender.data.model.response.ResponseFromFirestore
+import kotlinx.coroutines.flow.Flow
+
+typealias Notes = List<NoteFirebase>
+typealias NotesResponse = ResponseFromFirestore<Notes>
+typealias addNoteResponse = ResponseFromFirestore<Boolean>
+typealias DeleteNoteResponse = ResponseFromFirestore<Boolean>
+
+interface NotesFirebaseRepository {
+    fun getNotesFromFirestore(): Flow<NotesResponse>
+
+    suspend fun addNoteToFirestore(note: String): addNoteResponse
+
+    suspend fun deleteNoteFromFirebase(id: String): DeleteNoteResponse
+}"
+"```java
+/**
+ * This interface defines the contract for a class that tracks the device's location.
+ *
+ * @package com.example.calender.domain.Location
+ * This package likely contains domain-level interfaces and classes related to location tracking.
+ *
+ * @interface LocationTracker
+ * This interface declares a single method, `getCurrentLocation`, for retrieving the device's current location.  This separation of concerns promotes better code organization and testability.
+ *
+ * @function getCurrentLocation(): Location?
+ * This suspend function retrieves the device's current location.  The function is declared as suspend to indicate that it performs an asynchronous operation. The return type is `Location?` which allows for the possibility of null if the location cannot be obtained (e.g., due to permissions or location services being disabled).
+ *
+ * @return A Location object representing the device's current location, or null if the location cannot be determined.
+ */
+```
+
+
+
+
+
+","package com.example.calender.domain.Location
+
+import android.location.Location
+
+
+interface LocationTracker {
+    suspend fun getCurrentLocation(): Location?
+}"
+"```java
+/**
+ * This interface defines the contract for a repository that manages notes, providing an abstraction over the underlying data storage mechanism (likely a database).
+ *
+ * @package com.example.calender.domain.Notes
+ * This package contains domain-level interfaces and classes related to note management.
+ *
+ * @interface NotesRepository
+ * This interface specifies the methods for interacting with notes.  It separates the concerns of data access from the rest of the application, improving code organization and testability.
+ *
+ * @function getNote(): Flow<List<NoteEntity>>
+ * This function retrieves a flow of all notes stored in the repository. The use of Flow allows for observing changes to the notes data in real-time.
+ *
+ * @return A Flow that emits a List of NoteEntity objects.
+ *
+ * @function addNote(note: NoteEntity)
+ * This suspend function adds a new note to the repository.
+ *
+ * @param note The NoteEntity to be added.
+ *
+ * @function updateNote(note: NoteEntity)
+ * This suspend function updates an existing note in the repository.
+ *
+ * @param note The NoteEntity to be updated.
+ *
+ * @function deleteNote(note: NoteEntity)
+ * This suspend function deletes a note from the repository.
+ *
+ * @param note The NoteEntity to be deleted.
+ */
+```
+
+
+
+
+
+
+
+
+
+","package com.example.calender.domain.Notes
+
+import com.example.calender.data.db.NoteEntity
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+
+interface NotesRepository{
+    suspend fun getNote(): Flow<List<NoteEntity>>
+    suspend fun addNote(note: NoteEntity)
+    suspend fun updateNote(note: NoteEntity)
+    suspend fun deleteNote(note: NoteEntity)
+}"
+"```java
+/**
+ * This data class represents the current weather information in a format suitable for presentation in the UI.  It's likely a simplified version of the data received from a weather API.
+ *
+ * @package com.example.calender.domain.weather
+ * This package likely contains domain-level classes and interfaces related to weather data.
+ *
+ * @class CurrentWeatherForm
+ * This data class holds weather information formatted for display to the user.  It likely receives its data from a mapper that transforms raw weather data from an API response.
+ *
+ * @property name: String
+ * The name of the location.
+ *
+ * @property updatedDate: Int
+ * The time the weather data was last updated (likely a Unix timestamp).
+ *
+ * @property description: String
+ * A description of the current weather conditions.
+ *
+ * @property temperature: String
+ * The current temperature, formatted for display.
+ *
+ * @property dt:String
+ * The current time, formatted for display.
+ *
+ * @property minTemperature: String
+ * The minimum temperature for the day, formatted for display.
+ *
+ * @property maxTemperature: String
+ * The maximum temperature for the day, formatted for display.
+ *
+ * @property sunrise: String
+ * The sunrise time, formatted for display.
+ *
+ * @property sunset: String
+ * The sunset time, formatted for display.
+ *
+ * @property windSpeed: String
+ * The wind speed, formatted for display.
+ *
+ * @property pressure: String
+ * The atmospheric pressure, formatted for display.
+ *
+ * @property feelsLike: String
+ * The ""feels like"" temperature, formatted for display.
+ *
+ * @property humidity: String
+ * The humidity, formatted for display.
+ *
+ * @property icon: Int
+ * An integer representing a drawable resource ID for the weather icon.
+ */
+```
+
+
+
+
+
+
+
+
+
+","package com.example.calender.domain.weather
+
+
+data class CurrentWeatherForm(
+    val name:String,
+    val updatedDate: Int,
+    val description:String,
+    val temperature:String,
+    val dt:String,
+    val minTemperature:String,
+    val maxTemperature:String,
+    val sunrise:String,
+    val sunset:String,
+    val windSpeed:String,
+    val pressure:String,
+    val feelsLike:String,
+    val humidity:String,
+    val icon: Int
+)"
+"```java
+/**
+ * This class acts as a domain-level interface for fetching weather data, abstracting away the underlying implementation details (likely involving network requests).
+ *
+ * @package com.example.calender.domain.weather
+ * This package contains domain-level classes and interfaces related to weather data.
+ *
+ * @class WeatherRepository
+ * This class provides a higher-level interface for retrieving weather data. It delegates the actual data fetching to a `WeatherRepositoryImpl` (likely an implementation that interacts with a network API).  This separation improves the design and testability of the application.
+ *
+ * @constructor
+ * Injects a `WeatherRepositoryImpl` instance, which handles the low-level details of data retrieval.
+ *
+ * @property weatherRepositoryImpl: WeatherRepositoryImpl
+ * The implementation class responsible for fetching weather data from the API.
+ *
+ * @function fetchData(lat: Double, lon: Double): CurrentWeather
+ * This suspend function fetches weather data for the specified latitude and longitude coordinates. It delegates the work to the injected `weatherRepositoryImpl`.
+ *
+ * @param lat The latitude of the location.
+ * @param lon The longitude of the location.
+ * @return A CurrentWeather object containing the fetched weather data.
+ */
+```
+
+
+
+
+
+
+
+
+
+","package com.example.calender.domain.weather
+
+
+import com.example.calender.data.RepositoryImpl.WeatherRepositoryImpl
+import com.example.calender.data.model.response.CurrentWeather
+import javax.inject.Inject
+
+class WeatherRepository @Inject constructor(private val weatherRepositoryImpl: WeatherRepositoryImpl){
+    suspend fun fetchData(lat: Double, lon: Double): CurrentWeather {
+        return weatherRepositoryImpl.getWeather(lat, lon)
+    }
+}"
+"```java
+/**
+ * This use case retrieves current weather information using the device's location.
+ *
+ * @package com.example.calender.domain.weather
+ * This package contains domain-level use cases related to weather data.
+ *
+ * @class CurrentWeatherUseCase
+ * This class encapsulates the logic for fetching and transforming current weather data.  It uses dependency injection to obtain necessary components.
+ *
+ * @constructor
+ * Injects dependencies for accessing weather data, mapping weather data, and obtaining the device location.
+ *
+ * @property weatherRepository: WeatherRepository
+ *  Used to fetch weather data from a repository.
+ *
+ * @property weatherMapper: WeatherMapper
+ *  Used to map the raw weather data into a UI-friendly format.
+ *
+ * @property locationTracker: LocationTracker
+ *  Used to get the device's current location.
+ *
+ * @function invoke(): CurrentWeatherForm
+ * This suspend function retrieves and transforms current weather data. It first attempts to get the device's location using the `locationTracker`. If location is successfully obtained, it uses the latitude and longitude to fetch weather data from the `weatherRepository`, then maps it using the `weatherMapper`. If location retrieval fails, it uses fallback coordinates (21.2514, 81.6296).  The function uses logging to track success and failure in obtaining location data.
+ *
+ * @return A CurrentWeatherForm object containing the formatted weather data.
+ */
+```
+
+
+
+","package com.example.calender.domain.weather
+
+import android.util.Log
+import com.example.calender.domain.Location.LocationTracker
+import com.example.calender.domain.mapper.WeatherMapper
+import javax.inject.Inject
+
+class CurrentWeatherUseCase @Inject constructor(
+    private val weatherRepository: WeatherRepository,
+    private val weatherMapper: WeatherMapper,
+    private val locationTracker: LocationTracker
+) {
+    suspend operator fun invoke(): CurrentWeatherForm {
+        locationTracker.getCurrentLocation()?.let { location ->
+            Log.d(""TAG"",""${location.latitude} && ${location.longitude}"")
+            return weatherMapper.currentWeatherResponseToCurrentWeather(
+                currentWeather = weatherRepository.fetchData(location.latitude,location.longitude)
+            )
+        }?: kotlin.run {
+            Log.d(""TAG"",""error fetching location"")
+        }
+        return weatherMapper.currentWeatherResponseToCurrentWeather(
+            currentWeather = weatherRepository.fetchData(21.2514,81.6296)
+        )
+    }
+}"
+"```java
+/**
+ * This data class groups together several use cases related to managing notes.  This is a common pattern for organizing use cases, making them easily accessible and manageable.
+ *
+ * @package com.example.calender.domain.UseCases
+ * This package contains domain-level use cases.
+ *
+ * @class UseCases
+ * This data class bundles together three use cases: `getNotes`, `addNote`, and `deleteNote`.  This allows for easy access to all note-related operations.
+ *
+ * @property getNotes: GetNote
+ * A use case for retrieving notes.
+ *
+ * @property addNote: AddNote
+ * A use case for adding a new note.
+ *
+ * @property deleteNote: DeleteNote
+ * A use case for deleting a note.
+ */
+```
+
+
+
+
+
+","package com.example.calender.domain.UseCases
+
+data class UseCases (
+    val getNotes: GetNote,
+    val addNote: AddNote,
+    val deleteNote: DeleteNote
+)"
+"```java
+/**
+ * This class is a use case that retrieves notes from a repository.  It encapsulates the logic for fetching notes, separating it from the presentation layer.
+ *
+ * @package com.example.calender.domain.UseCases
+ * This package contains domain-level use cases.
+ *
+ * @class GetNote
+ * This class represents a use case for retrieving notes. It takes a `NotesFirebaseRepository` as a dependency, allowing it to interact with the data source.
+ *
+ * @constructor
+ * The constructor injects a NotesFirebaseRepository instance.
+ *
+ * @property repo: NotesFirebaseRepository
+ * The repository used to fetch notes from a data source (likely Firebase Firestore).
+ *
+ * @function invoke(): Flow<NotesResponse>
+ * This operator overload allows the use case to be invoked using the `()` operator, simplifying its usage.  It delegates the call to the repository's `getNotesFromFirestore()` method.
+ *
+ * @return A Flow<NotesResponse> that emits the list of notes.  The NotesResponse type is likely a sealed class that can handle various states (loading, success, failure).
+ */
+```
+
+
+
+
+
+
+","package com.example.calender.domain.UseCases
+
+import com.example.calender.domain.NotesFirebase.NotesFirebaseRepository
+
+class GetNote(
+    private val repo:NotesFirebaseRepository
+) {
+    operator fun invoke() = repo.getNotesFromFirestore()
+}"
+"```java
+/**
+ * This class implements a use case for deleting a note from a repository. It encapsulates the business logic for deleting a note, separating it from the presentation layer.
+ *
+ * @package com.example.calender.domain.UseCases
+ * This package contains domain-level use cases.
+ *
+ * @class DeleteNote
+ * This class represents the use case for deleting a note. It takes a `NotesFirebaseRepository` as a dependency to interact with the data source.
+ *
+ * @constructor
+ * Injects a NotesFirebaseRepository instance.
+ *
+ * @property repo: NotesFirebaseRepository
+ * The repository used to delete notes from the data source (likely Firebase Firestore).
+ *
+ * @function invoke(id: String): DeleteNoteResponse
+ * This suspend function deletes a note from the repository. The function is marked as `suspend` because it performs an asynchronous operation.  It delegates the actual deletion to the `repo.deleteNoteFromFirebase` method.
+ *
+ * @param id The ID of the note to be deleted.
+ * @return A DeleteNoteResponse object which likely indicates success or failure of the operation.
+ */
+```
+
+
+
+
+
+","package com.example.calender.domain.UseCases
+
+import com.example.calender.domain.NotesFirebase.NotesFirebaseRepository
+
+class DeleteNote(
+    private val repo: NotesFirebaseRepository
+) {
+    suspend operator fun invoke(id: String) = repo.deleteNoteFromFirebase(id)
+}"
+"```java
+/**
+ * This class implements a use case for adding a new note to a repository.  It encapsulates the business logic for adding a note, separating it from the presentation layer.
+ *
+ * @package com.example.calender.domain.UseCases
+ * This package contains domain-level use cases.
+ *
+ * @class AddNote
+ * This class represents the use case for adding a new note. It takes a `NotesFirebaseRepository` as a dependency to interact with the data source.
+ *
+ * @constructor
+ * Injects a `NotesFirebaseRepository` instance.
+ *
+ * @property repo: NotesFirebaseRepository
+ * The repository used to add notes to the data source (likely Firebase Firestore).
+ *
+ * @function invoke(note: String): addNoteResponse
+ * This suspend function adds a new note to the repository. The function is marked as `suspend` because it performs an asynchronous operation. It delegates the actual addition to the `repo.addNoteToFirestore` method.
+ *
+ * @param note The text content of the note to be added.
+ * @return An `addNoteResponse` object, which likely indicates the success or failure of the addition operation.
+ */
+```","package com.example.calender.domain.UseCases
+
+import com.example.calender.domain.NotesFirebase.NotesFirebaseRepository
+
+class AddNote(
+    private val repo: NotesFirebaseRepository
+) {
+    suspend operator fun invoke(
+        note: String
+    ) = repo.addNoteToFirestore(note)
+}"
+"```java
+/**
+ * This data class represents the state of the UI for displaying current weather information.  It uses a pattern common in state-management libraries (like MVI or unidirectional data flow) to encapsulate the different states of the UI, including loading, success, and error states.
+ *
+ * @package com.example.calender.presentation.viewmodel
+ * This package likely contains view models for the presentation layer.
+ *
+ * @class CurrentWeatherViewState
+ * This data class represents the state of the UI for displaying current weather information. It includes the weather data itself, loading status, error status, and an optional error message.  This helps manage the different states of the UI in a structured way.
+ *
+ * @property currentWeatherForm: CurrentWeatherForm?
+ * The current weather data, or null if data is not yet available.
+ *
+ * @property isLoading: Boolean
+ * A flag indicating whether the weather data is currently being loaded.
+ *
+ * @property anyError: Boolean
+ * A flag indicating whether an error has occurred.
+ *
+ * @property errorMessage: String?
+ * An optional error message to display to the user, or null if no error has occurred.
+ */
+```","package com.example.calender.presentation.viewmodel
+
+import com.example.calender.domain.weather.CurrentWeatherForm
+
+data class CurrentWeatherViewState (
+    val currentWeatherForm: CurrentWeatherForm?=null,
+    val isLoading:Boolean,
+    val anyError:Boolean=false,
+    val errorMessage:String?=null
+)"
+"```java
+/**
+ * This ViewModel handles the fetching and display of current weather information. It uses a state-management approach to update the UI based on loading state, success, or failure.  It leverages Dagger Hilt for dependency injection.
+ *
+ * @package com.example.calender.presentation.viewmodel
+ * This package contains view models for the presentation layer.
+ *
+ * @class WeatherViewModel
+ * This ViewModel is responsible for fetching and managing current weather data.  It uses a `MutableLiveData` to update the UI state and handles potential exceptions during data retrieval.
+ *
+ * @constructor
+ * Injects the CurrentWeatherUseCase, which encapsulates the business logic for fetching weather information.
+ *
+ * @property currentWeatherUseCase: CurrentWeatherUseCase
+ *  The use case responsible for retrieving weather data.
+ *
+ * @property _uiState: MutableLiveData<CurrentWeatherViewState>
+ *  A MutableLiveData object holding the current UI state.
+ *
+ * @property uiState: LiveData<CurrentWeatherViewState>
+ *  An immutable LiveData object exposing the UI state to observers.
+ *
+ * @function getCurrentWeather()
+ * This function fetches the current weather data using the `currentWeatherUseCase`.  It updates the UI state to indicate loading, then processes the result.  If successful, it updates the UI state with the weather data; otherwise, it updates the UI state to indicate an error, including an error message.  This function uses Kotlin coroutines for asynchronous operations.
+ */
+```
+
+
+
+
+
+","package com.example.calender.presentation.viewmodel
+
+import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.calender.domain.weather.CurrentWeatherUseCase
+import com.example.calender.domain.Location.LocationTracker
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+
+@HiltViewModel
+class WeatherViewModel @Inject constructor(
+    private val currentWeatherUseCase: CurrentWeatherUseCase
+): ViewModel(){
+    private val _uiState : MutableLiveData<CurrentWeatherViewState> = MutableLiveData()
+    val uiState: LiveData<CurrentWeatherViewState>
+        get() = _uiState
+
+
+    fun getCurrentWeather() = viewModelScope.launch {
+        try {
+            _uiState.value = CurrentWeatherViewState(isLoading = true)
+            val result = currentWeatherUseCase()
+            _uiState.value = CurrentWeatherViewState(
+                isLoading = false,
+                currentWeatherForm = result
+            )
+//            Log.d(""TAG"", result.toString())
+        } catch (e: Exception) {
+            _uiState.value = CurrentWeatherViewState(
+                anyError = true,
+                errorMessage = e.message ?: ""An error occurred."",
+                isLoading = false
+            )
+        }
+    }
+}"
+"```java
+/**
+ * This ViewModel manages the list of notes, providing functions to retrieve, add, update, and delete notes. It uses Kotlin Coroutines and Flow for asynchronous operations and state management. Dagger Hilt is used for dependency injection.
+ *
+ * @package com.example.calender.presentation.viewmodel
+ * This package contains ViewModels for the presentation layer.
+ *
+ * @class NoteViewModel
+ * This ViewModel handles the CRUD (Create, Read, Update, Delete) operations for notes. It uses a `MutableStateFlow` to manage the list of notes and exposes it as a read-only `StateFlow`.
+ *
+ * @constructor
+ * Injects a NotesRepository instance for data access.
+ *
+ * @property notesRepository: NotesRepository
+ * The repository responsible for interacting with the data source (likely a database).
+ *
+ * @property _note: MutableStateFlow<List<NoteEntity>>
+ * A mutable state flow holding the list of notes.  Changes to this flow will trigger UI updates.
+ *
+ * @property note: StateFlow<List<NoteEntity>>
+ * A read-only state flow exposing the list of notes to observers.
+ *
+ * @function getNote()
+ * This function retrieves all notes from the repository and updates the `_note` state flow. It uses a coroutine launched in the IO dispatcher for background execution.
+ *
+ * @function updateNote(noteEntity: NoteEntity)
+ * This function updates a given note in the repository. It launches a coroutine in the IO dispatcher for background execution.
+ *
+ * @param noteEntity The NoteEntity to be updated.
+ *
+ * @function deleteNote(noteEntity: NoteEntity)
+ * This function deletes a given note from the repository. It launches a coroutine in the IO dispatcher for background execution.
+ *
+ * @param noteEntity The NoteEntity to be deleted.
+ *
+ * @function addNote(noteEntity: NoteEntity)
+ * This function adds a new note to the repository.  It launches a coroutine in the IO dispatcher for background execution.
+ *
+ * @param noteEntity The NoteEntity to be added.
+ */
+```","package com.example.calender.presentation.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.calender.data.db.NoteEntity
+import com.example.calender.domain.Notes.NotesRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class NoteViewModel @Inject constructor(
+    private val notesRepository:NotesRepository
+): ViewModel() {
+
+    private val _note: MutableStateFlow<List<NoteEntity>> = MutableStateFlow(emptyList())
+    val note = _note.asStateFlow()
+
+    init {
+        getNote()
+    }
+
+    private fun getNote(){
+        viewModelScope.launch (Dispatchers.IO){
+            notesRepository.getNote().collect{data->
+                _note.value = data
+            }
+        }
+    }
+
+    fun updateNOte(noteEntity: NoteEntity){
+        viewModelScope.launch (Dispatchers.IO){
+            notesRepository.updateNote(noteEntity)
+        }
+    }
+
+    fun deleteNote(noteEntity: NoteEntity){
+        viewModelScope.launch (Dispatchers.IO){
+            notesRepository.deleteNote(noteEntity)
+        }
+    }
+
+    fun addNote(noteEntity: NoteEntity){
+        viewModelScope.launch (Dispatchers.IO){
+            notesRepository.addNote(noteEntity)
+        }
+    }
+}"
+"```java
+/**
+ * This ViewModel manages the state and actions related to notes stored in Firebase. It uses a state-management approach with `MutableState` to update the UI.  Dagger Hilt is used for dependency injection.
+ *
+ * @package com.example.calender.presentation.viewmodel
+ * This package contains ViewModels for the presentation layer.
+ *
+ * @class NotesFirebaseViewModel
+ * This ViewModel handles interactions with Firebase for managing notes. It uses Kotlin coroutines and Flow for asynchronous operations.  The UI state is managed using `MutableStateOf`.
+ *
+ * @constructor
+ * Injects a UseCases instance, which provides access to the note-related use cases.
+ *
+ * @property useCases: UseCases
+ * An instance containing getNotes, addNote, and deleteNote use cases.
+ *
+ * @property NoteResponse: NotesResponse
+ * A MutableState holding the response from the getNotes operation.
+ *
+ * @property addNoteRes: addNoteResponse
+ * A MutableState holding the response from the addNote operation.
+ *
+ * @property deleteNoteResponse: DeleteNoteResponse
+ * A MutableState holding the response from the deleteNote operation.
+ *
+ * @function getNote()
+ * This function retrieves notes from Firebase using the `getNotes` use case and updates the `NoteResponse` state. It uses a coroutine launched within the `viewModelScope` for background execution.
+ *
+ * @function addNote(note: String)
+ * This function adds a new note to Firebase. It updates the `addNoteRes` state to Loading, then calls the `addNote` use case and updates the state with the result.  It uses a coroutine for asynchronous execution.
+ *
+ * @param note The text content of the note to be added.
+ *
+ * @function deleteNotek(id: String)
+ * This function deletes a note from Firebase. It updates the `deleteNoteResponse` state to Loading, then calls the `deleteNote` use case and updates the state with the result.  It uses a coroutine for asynchronous execution.
+ *
+ * @param id The ID of the note to be deleted.
+ */
+```
+
+","package com.example.calender.presentation.viewmodel
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.calender.data.model.response.ResponseFromFirestore
+import com.example.calender.domain.NotesFirebase.DeleteNoteResponse
+import com.example.calender.domain.NotesFirebase.NotesResponse
+import com.example.calender.domain.NotesFirebase.addNoteResponse
+import com.example.calender.domain.UseCases.UseCases
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class NotesFirebaseViewModel @Inject constructor(
+    private val useCases: UseCases
+) : ViewModel(){
+    var NoteResponse by mutableStateOf<NotesResponse>(ResponseFromFirestore.Loading)
+        private set
+
+    var addNoteRes by mutableStateOf<addNoteResponse>(ResponseFromFirestore.Success(false))
+        private set
+
+    var deleteNoteResponse by mutableStateOf<DeleteNoteResponse>(ResponseFromFirestore.Success(false))
+        private set
+
+    init {
+        getNote()
+    }
+
+    private fun getNote() = viewModelScope.launch {
+        useCases.getNotes().collect{response->
+            NoteResponse = response
+        }
+    }
+
+    fun addNote(note: String) = viewModelScope.launch {
+        addNoteRes = ResponseFromFirestore.Loading
+        addNoteRes = useCases.addNote(note)
+    }
+
+    fun deleteNotek(id: String) = viewModelScope.launch {
+        deleteNoteResponse = ResponseFromFirestore.Loading
+        deleteNoteResponse = useCases.deleteNote(id)
+    }
+}"
+"```java
+/**
+ * This composable function displays the current weather information, handling loading and error states.
+ *
+ * @package com.example.calender.presentation.ui.component.Weather
+ * This package likely contains composable functions related to displaying weather information.
+ *
+ * @Composable
+ * This annotation marks the function as a Jetpack Compose composable function.
+ *
+ * @function WeatherScreen(viewModel: WeatherViewModel)
+ * This function displays the current weather information based on the state from the provided WeatherViewModel. It observes the `uiState` LiveData and renders different content based on whether data is loading, an error has occurred, or data is available.
+ *
+ * @param viewModel The WeatherViewModel providing the UI state.
+ */
+```
+
+
+
+","package com.example.calender.presentation.ui.component.Weather
+
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import com.example.calender.presentation.viewmodel.WeatherViewModel
+
+@Composable
+fun WeatherScreen(viewModel: WeatherViewModel){
+    val uiState by viewModel.uiState.observeAsState()
+    uiState?.let { currentState ->
+        when {
+            currentState.isLoading -> {
+                CircularProgressIndicator()
+            }
+
+            currentState.anyError -> {
+                // Show error message
+//                Text(text = currentState.errorMessage ?: ""An error occurred."")
+            }
+
+            else -> {
+                // Display weather information
+                val currentWeather = currentState.currentWeatherForm
+                if (currentWeather != null) {
+                    Weather(
+                        temp = currentWeather.temperature,
+                        sunrise = currentWeather.sunrise,
+                        sunset = currentWeather.sunset,
+                        humidity = currentWeather.humidity,
+                        description = currentWeather.description,
+                        ic = currentWeather.icon
+                    )
+                } else {
+                    // Handle null currentWeatherForm
+                }
+            }
+        }
+    }
+}"
+"```java
+/**
+ * This composable function defines the navigation graph for the bottom navigation bar, using Jetpack Compose Navigation.
+ *
+ * @package com.example.calender.presentation.navigation
+ * This package likely contains navigation-related composable functions.
+ *
+ * @Composable
+ * This annotation marks the function as a Jetpack Compose composable function.
+ *
+ * @function BottomNavGraph(navController: NavHostController)
+ * This function sets up a navigation graph using NavHost.  It defines two composable routes: one for a ""Personal"" screen (`NotesScreen`) and one for a ""Groups"" screen (`FirestoreScreen`).  The ""Personal"" screen is set as the start destination.
+ *
+ * @param navController The NavHostController used for navigation.
+ */
+```
+
+
+
+
+
+","package com.example.calender.presentation.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import com.example.calender.presentation.ui.component.Notes.NotesScreen
+import com.example.calender.presentation.ui.component.firebaseNotes.FirestoreScreen
+
+@Composable
+fun BottomNavGraph(navController: NavHostController){
+    NavHost(
+        navController = navController,
+        startDestination = BottomBarScreen.Personal.route){
+        composable(route = BottomBarScreen.Personal.route){
+            NotesScreen()
+        }
+        composable(route = BottomBarScreen.Groups.route){
+            FirestoreScreen(firebaseNotes = emptyList())
+        }
+    }
+}"
+"```java
+/**
+ * This sealed class defines the screens that are displayed in the bottom navigation bar of the application.  Each screen is represented by a data class containing its route, title, and icon.  Using a sealed class ensures type safety and helps manage the different screens in a structured way.
+ *
+ * @package com.example.calender.presentation.navigation
+ * This package likely contains navigation-related classes.
+ *
+ * @sealed class BottomBarScreen
+ * This sealed class defines the screens shown in the bottom navigation bar. Each screen is represented by an object with a route, title, and icon.
+ *
+ * @object Personal: BottomBarScreen
+ * Represents the ""Personal"" screen in the bottom navigation bar.
+ *
+ * @property route: String
+ * The navigation route for this screen.
+ *
+ * @property title: String
+ * The title displayed for this screen.
+ *
+ * @property icon: ImageVector
+ * The icon displayed for this screen.
+ *
+ * @object Groups: BottomBarScreen
+ * Represents the ""Groups"" screen in the bottom navigation bar.
+ *
+ * @property route: String
+ * The navigation route for this screen.
+ *
+ * @property title: String
+ * The title displayed for this screen.
+ *
+ * @property icon: ImageVector
+ * The icon displayed for this screen.
+ */
+```
+
+
+
+
+","package com.example.calender.presentation.navigation
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed class BottomBarScreen(
+    val route: String,
+    val title: String,
+    val icon: ImageVector
+) {
+    object Personal: BottomBarScreen(
+        route = ""Personal"",
+        title = ""Personal"",
+        icon = Icons.Default.Person
+    )
+    object Groups: BottomBarScreen(
+        route = ""Groups"",
+        title = ""Groups"",
+        icon = Icons.Default.MailOutline
+    )
+}"
