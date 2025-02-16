@@ -19,15 +19,15 @@ assets = modal.Mount.from_local_dir(
 
 # Path for input files
 ASSETS_DIR = Path("/assets")
-eval_dataset_path = ASSETS_DIR / "fine-tuning-small.csv" 
+eval_dataset_path = ASSETS_DIR / "evaluation-small.csv" 
 
 # Persistent storage for trained models
 MODEL_DIR = Path("/models")
-volume = modal.Volume.from_name("AST_MODAL", create_if_missing=True)
-model_path = MODEL_DIR
+model_path = MODEL_DIR / 'model_peft'
 weights_path = MODEL_DIR / "model_weights_ast.pth"
 output_path = MODEL_DIR / "output_1.csv"
 
+volume = modal.Volume.from_name("AST_MODAL", create_if_missing=True)
 @app.function(image=image, mounts=[assets], gpu=modal.gpu.A100(count=8), volumes={MODEL_DIR: volume}, timeout=86400)
 def main():
     runModel(
