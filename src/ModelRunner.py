@@ -1,3 +1,4 @@
+import gc
 import torch
 from transformers import AutoTokenizer
 from peft import PeftModel
@@ -37,15 +38,20 @@ def runModel(
     output_dataset_path: str
 ):
     data = pd.read_csv(input_dataset_path)
+    column_name = "generated_solution"
     try:
-        for i in range(0, data.shape[0]):
+        for i in range(data.shape[0]):
+            print(f"Loading model for problem {i}...")
             model, tokenizer = load_model_and_tokenizer(model_path, weights_path)
-            column_name = "generated_solution"
             print(f"Generating solution for problem {i}...")
             solution = generate_solution(model, tokenizer, data['problem'][i])
-            data.loc[data.index[i], column_name]= solution
+            data.loc[data.index[i], column_name] = solution
             print(f"Generated column: {column_name}")
-    except KeyboardInterrupt as e:
+            del model
+            del tokenizer
+            torch.cuda.empty_cache()  
+            gc.collect()
+    except KeyboardInterrupt:
         print("Interrupted by user")
     finally:
         print(data.head())
