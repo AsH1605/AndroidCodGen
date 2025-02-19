@@ -41,6 +41,11 @@ def runModel(
     column_name = "generated_solution"
     try:
         for i in range(data.shape[0]):
+            # if generated_solution is already present, skip
+            if not pd.isnull(data.loc[data.index[i], column_name]):
+                print(f"Some value already present in column {column_name} for problem {i}. Skipping...")
+                continue
+            # Else generate solution
             print(f"Loading model for problem {i}...")
             model, tokenizer = load_model_and_tokenizer(model_path, weights_path)
             print(f"Generating solution for problem {i}...")
