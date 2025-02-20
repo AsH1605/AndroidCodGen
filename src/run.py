@@ -25,7 +25,7 @@ eval_dataset_path = ASSETS_DIR / "evaluation.csv"
 MODEL_DIR = Path("/models")
 model_path = MODEL_DIR / 'model_peft'
 weights_path = MODEL_DIR / "model_weights_ast.pth"
-output_path = MODEL_DIR / "output_full.csv"
+output_path = MODEL_DIR / "output_full_eval.csv"
 
 volume = modal.Volume.from_name("AST_MODAL", create_if_missing=True)
 @app.function(image=image, mounts=[assets], gpu=modal.gpu.A100(count=8), volumes={MODEL_DIR: volume}, timeout=86400)

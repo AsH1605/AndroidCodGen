@@ -37,25 +37,44 @@ def runModel(
     input_dataset_path: str,
     output_dataset_path: str
 ):
-    data = pd.read_csv(input_dataset_path)
-    column_name = "generated_solution"
+    
+    # if output dataset file is missing, create it
     try:
-        for i in range(data.shape[0]):
-            # if generated_solution is already present, skip
+        output_df = pd.read_csv(output_dataset_path)
+    except FileNotFoundError:
+        print(f"Output dataset file not found. Creating a new file at {output_dataset_path}")
+        output_df = pd.DataFrame(columns=["problem", "solution", "generated_solution"])
+        output_df.to_csv(output_dataset_path, index=False)
+
+    # Load the input and output files
+    input_df = pd.read_csv(input_dataset_path)
+    output_df = pd.read_csv(output_dataset_path)
+    column_name = "generated_solution"
+
+    try:
+        for i in range(input_df.shape[0]):
+            # if generated_solution is already present in output dataframe, skip
             try:
-                if not pd.isnull(data.loc[data.index[i], column_name]):
-                    print(f"Some value already present in column {column_name} for problem {i}. Skipping...")
-                    continue
+                if not pd.isnull(output_df.loc[output_df.index[i], column_name]):
+                        print(f"Some value already present in column {column_name} for problem {i}. Skipping...")
+                        continue
             except KeyError:
-                # column not present, continue this iteration
-                print(f"Column {column_name} not present in dataset. Generating solution for problem {i}...")
                 pass
+            except IndexError:
+                pass
+
             # Else generate solution
+            problem = input_df['problem'][i]
+            solution = input_df['solution'][i]
+
             print(f"Loading model for problem {i}...")
             model, tokenizer = load_model_and_tokenizer(model_path, weights_path)
             print(f"Generating solution for problem {i}...")
-            solution = generate_solution(model, tokenizer, data['problem'][i])
-            data.loc[data.index[i], column_name] = solution
+            generated_solution = generate_solution(model, tokenizer, problem)
+
+            # Write the generated solution to the output dataframe: problem, solution, generated_solution
+            output_df.loc[i] = [problem, solution, generated_solution]
+            
             print(f"Generated column: {column_name}")
             del model
             del tokenizer
@@ -64,5 +83,5 @@ def runModel(
     except KeyboardInterrupt:
         print("Interrupted by user")
     finally:
-        print(data.head())
-        data.to_csv(output_dataset_path, index=False)
+        print(output_df.head())
+        output_df.to_csv(output_dataset_path, index=False)
