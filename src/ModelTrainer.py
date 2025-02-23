@@ -9,9 +9,8 @@ import torch
 # output_dir : output directory where the trained model and weights should be stored
 # @return: void
 def trainModel(train_dataset_path: str, output_dir: str):
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_name = 'JetBrains/deepseek-coder-1.3B-kexer'
+    model_name = 'JetBrains/deepseek-coder-6.7B-kexer'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     print("Model initialized..")
@@ -54,7 +53,7 @@ def trainModel(train_dataset_path: str, output_dir: str):
 
     args = TrainingArguments(
         # temporary directory for storing checkpoints
-        output_dir="./output/deepseek_coder_v2", 
+        output_dir="./output/deepseek_coder_v3", 
         per_device_train_batch_size=1,
         logging_steps=10,
         num_train_epochs=10,
@@ -76,7 +75,7 @@ def trainModel(train_dataset_path: str, output_dir: str):
     )
     trainer.train()
 
-    torch.save(peft_model, output_dir + '/model_weights_ast.pth')
-    peft_model.save_pretrained(output_dir + '/model_peft')
+    torch.save(peft_model, output_dir / 'model_weights_ast.pth')
+    peft_model.save_pretrained(output_dir  / 'model_peft')
     print("Model Saved Successfully")
     
