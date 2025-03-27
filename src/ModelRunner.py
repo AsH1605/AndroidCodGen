@@ -1,21 +1,15 @@
 import gc
 import torch
-from transformers import AutoTokenizer
-from peft import PeftModel
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel, PeftConfig
 import pandas as pd
 
 def generate_solution(model, tokenizer, problem: str) -> str:
-    instruction = "You are a coding assistant. Given the following coding problem, provide a clear and detailed solution.\n"
+    instruction = "You are a coding assistant. Given the following coding problem, provide a clear and detailed solution in Kotlin.\n"
     input_text = instruction + problem
     print(f"Generating solution...")
     input_ids = tokenizer(input_text, return_tensors="pt").input_ids.to(model.device)
-    generated_ids = model.generate(
-        input_ids,
-        max_length=20000,
-        num_beams=5,
-        early_stopping=True,
-        pad_token_id=tokenizer.pad_token_id
-    )
+    generated_ids = model.generate(input_ids=input_ids, max_length=1000)
     print("Ids generated...")
     solution = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
     print(f"Decoded solution...")
@@ -24,8 +18,10 @@ def generate_solution(model, tokenizer, problem: str) -> str:
 def load_model_and_tokenizer(model_path, weights_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Running on {device}")
-    tokenizer = AutoTokenizer.from_pretrained("JetBrains/deepseek-coder-1.3B-kexer")
-    model = torch.load(f=weights_path, map_location=device, weights_only=False)
+    model_name = "ammarnasr/codegen-350M-mono-java"
+    peft_config = PeftConfig.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(peft_config.base_model_name_or_path)
+    model = AutoModelForCausalLM.from_pretrained(peft_config.base_model_name_or_path)
     peft_model = PeftModel.from_pretrained(model, model_path)
     peft_model.to(device)
     print("Model initialized...")

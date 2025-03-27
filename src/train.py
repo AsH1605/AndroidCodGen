@@ -23,7 +23,7 @@ train_dataset_path = ASSETS_DIR / "fine-tuning.csv"
 
 # Persistent storage for trained models
 MODEL_DIR = Path("/models")
-volume = modal.Volume.from_name("AST_MODAL_JB_6_7B", create_if_missing=True)
+volume = modal.Volume.from_name("AST_MODAL_MONO_JAVA", create_if_missing=True)
 
 @app.function(image=image, mounts=[assets], gpu=modal.gpu.A100(count=8), volumes={MODEL_DIR: volume}, timeout=86400)
 def main():

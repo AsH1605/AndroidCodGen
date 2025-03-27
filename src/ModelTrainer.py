@@ -1,5 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorForSeq2Seq
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, PeftConfig, get_peft_model
 from datasets import Dataset
 import pandas as pd
 import torch
@@ -10,23 +10,20 @@ import torch
 # @return: void
 def trainModel(train_dataset_path: str, output_dir: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_name = 'JetBrains/deepseek-coder-6.7B-kexer'
+    model_name = 'ammarnasr/codegen-350M-mono-java'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # Ensure padding token is set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     print("Model initialized..")
 
-    peft_config = LoraConfig(
-        task_type="CAUSAL_LM",
-        target_modules=["q_proj", "kv_a_proj_with_mqa", "kv_b_proj", "o_proj", 'gate_proj', 'up_proj', 'down_proj'],
-        r=8,
-        lora_alpha=64,
-        lora_dropout=0.1
-    )
+    peft_config = PeftConfig.from_pretrained(model_name)
     print("Memory allocated:", torch.cuda.memory_allocated() / (1024 * 1024))
 
     def tokenize_function(example):
-        inputs = tokenizer(text=example['instruction'] + example['problem'], padding="max_length", max_length=384, truncation=True)
-        response = tokenizer(text=example["solution"], padding="max_length", max_length=384, truncation=True)
+        inputs = tokenizer(text=example['instruction'] + example['problem'], padding="longest", max_length=384, truncation=True)
+        response = tokenizer(text=example["solution"], padding="longest", max_length=384, truncation=True)
         
         input_ids = inputs['input_ids'] + response["input_ids"] + [tokenizer.pad_token_id]
         attention_mask = inputs["attention_mask"] + response["attention_mask"] + [1]
