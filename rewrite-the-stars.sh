@@ -9,41 +9,61 @@ fi
 NEW_NAME="$1"
 NEW_EMAIL="$2"
 
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: Not inside a Git repository."
+    exit 1
+fi
+
+if ! git rev-list --all | grep -q .; then
+    echo "Error: No commits found in the repository."
+    exit 1
+fi
+
 echo "Rewriting Git history with new author name: '$NEW_NAME' and email: '$NEW_EMAIL'..."
 
-# Create a temporary file for commit mapping
+# Create temporary files
 COMMIT_MAP_FILE=$(mktemp)
 COMMITS_FILE=$(mktemp)
 
-# Get all commits in chronological order (oldest first)
+# Get all commits in chronological order
 git rev-list --reverse --all > "$COMMITS_FILE"
 
-# Variable to track the latest commit in the rewritten history
 NEW_HEAD=""
 
 while read -r commit; do
-    # Extract commit details
     tree=$(git rev-parse "$commit^{tree}")
-    parent=$(git rev-parse "$commit^" 2>/dev/null || echo "")
+
+    # Ensure the parent commit exists
+    if git cat-file -e "$commit^" 2>/dev/null; then
+        parent=$(git rev-parse "$commit^")
+    else
+        parent=""
+    fi
+
     commit_msg=$(git log --format=%B -n 1 "$commit")
     commit_date=$(git log --format=%aI -n 1 "$commit")
 
-    # Check if this commit has a parent (not the root commit)
-    if [[ -z "$parent" ]]; then
-        # Root commit (no parent)
+    if [[ -n "$parent" ]]; then
+        mapped_parent=$(grep "^$parent " "$COMMIT_MAP_FILE" | awk '{print $2}')
+        if [[ -z "$mapped_parent" ]]; then
+            echo "Error: No mapped parent commit found for $commit."
+            exit 1
+        fi
+    else
+        mapped_parent=""
+    fi
+
+    # Create the new commit
+    if [[ -z "$mapped_parent" ]]; then
         new_commit=$(echo "$commit_msg" | GIT_COMMITTER_NAME="$NEW_NAME" GIT_COMMITTER_EMAIL="$NEW_EMAIL" \
                      GIT_COMMITTER_DATE="$commit_date" git commit-tree "$tree" --author="$NEW_NAME <$NEW_EMAIL>")
     else
-        # Fetch mapped parent commit
-        mapped_parent=$(grep "^$parent " "$COMMIT_MAP_FILE" | awk '{print $2}')
         new_commit=$(echo "$commit_msg" | GIT_COMMITTER_NAME="$NEW_NAME" GIT_COMMITTER_EMAIL="$NEW_EMAIL" \
                      GIT_COMMITTER_DATE="$commit_date" git commit-tree "$tree" -p "$mapped_parent" --author="$NEW_NAME <$NEW_EMAIL>")
     fi
 
-    # Save the commit mapping
+    # Save the mapping
     echo "$commit $new_commit" >> "$COMMIT_MAP_FILE"
-
-    # Update HEAD reference to the latest commit
     NEW_HEAD="$new_commit"
 done < "$COMMITS_FILE"
 
@@ -57,5 +77,5 @@ else
     echo "Operation canceled."
 fi
 
-# Cleanup temporary files
+# Cleanup
 rm -f "$COMMITS_FILE" "$COMMIT_MAP_FILE"
